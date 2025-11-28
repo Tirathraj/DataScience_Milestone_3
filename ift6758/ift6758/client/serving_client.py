@@ -27,6 +27,9 @@ class ServingClient:
         #Added for Milestone 3 (Tirath)
         self.predict_url = f"{self.base_url}//predict"
         self.log_url = f"{self.base_url}//logs"
+        self.registry_url = f"{self.base_url}//download_registry_model"
+
+        print(f"Serving Client Initialized")
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
         """
@@ -41,11 +44,11 @@ class ServingClient:
         #raise NotImplementedError("TODO: implement this function")
 
         #Convert df to list of dicts for JSON
-        json_list = X.to_dict(orient = "records")
+        json_data = X.to_dict(orient = "records")
 
         #Send request to flask and try to capture response
         try:
-            response = requests.post(self.predict_url, json = json_list)
+            response = requests.post(self.predict_url, json = json_data)
         except Exception as e:
             print(f"Server Error: {e}")
             raise RuntimeError()
@@ -94,5 +97,28 @@ class ServingClient:
             model (str): The model in the Comet ML registry to download
             version (str): The model version to download
         """
+        #raise NotImplementedError("TODO: implement this function")
 
-        raise NotImplementedError("TODO: implement this function")
+        #Send POST Request to Flask
+        json_data = {
+            "workspace" : workspace,
+            "model" : model,
+            "version" : version
+        }
+        
+        try:
+            response = requests.post(self.registry_url, json = json_data)
+
+        except Exception as e:
+            print(f"Model Registry Error: {e}")
+            raise RuntimeError()
+
+        if(response.status_code !=200):
+            print(f"Error code {response.status_code}: {response.text}")
+            raise RuntimeError()
+
+        response_dict = response.json()
+        model_name = response_dict["model"]
+        print(f"Model switched to: {model_name}")
+        
+        return response_dict        
