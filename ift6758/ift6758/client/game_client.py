@@ -25,6 +25,11 @@ def get_df_by_game(game_id = 2016020001):
 
     df_engineered = get_engineered_df_by_game(df, save_csv = True)
 
+    if(df_engineered.loc[0,'game_state'] == 'LIVE'):
+        print(f"{game_id} is LIVE")
+        
+    else: print(f"{game_id} is NOT LIVE")
+
     return df_engineered
     
 
@@ -321,12 +326,29 @@ def get_root_data_by_game( data : dict) -> dict :
 
     """
 
+
+    #Modified for Milestone 3 -> Live games
+    
+    game_outcome = data.get("gameOutcome")
+    outcome = np.nan
+
+    if game_outcome is None:
+        outcome = np.nan
+    elif isinstance(game_outcome, dict):
+        outcome = game_outcome.get("lastPeriodType", np.nan)
+    else:
+        outcome = game_outcome
+
+        
     game_info={
 
         'game_id' : data['id'],
         'season' : data['season'],
         'game_type' : data['gameType'],
-        'game_outcome': data['gameOutcome']['lastPeriodType']
+        'game_outcome': outcome,
+        
+        #Added for MIlesone 3 to determine live game status''
+        'game_state': data['gameState']
     }
 
     venue_info={
