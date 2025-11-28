@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import os
 
-from path_variables import DATA_DIR
+#from path_variables import DATA_DIR
 
 
 def load_by_id(year : int , game_type : int , game_number : int ) -> dict :

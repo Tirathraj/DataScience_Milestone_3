@@ -6,11 +6,29 @@ import os
 import requests
 import time
 
+from feature_eng_1 import get_engineered_df_by_game
+
 
 #Ported from Milestone 1
 
+def get_df_by_game(game_id = 2016020001):
 
-def fetch_data_by_api(game_id : str):
+    file = fetch_data_by_api(game_id)
+
+    if(file==-1):
+        print(f"File could not be fetched..Aborted")
+        return None
+
+    list_of_plays = get_play_by_play_by_game(file)
+
+    df = pd.DataFrame(list_of_plays)
+
+    df_engineered = get_engineered_df_by_game(df, save_csv = True)
+
+    return df_engineered
+    
+
+def fetch_data_by_api(game_id = 2016020001):
     """
     
     Utility Function - Fetches a json file from NHL API given a Game Id.

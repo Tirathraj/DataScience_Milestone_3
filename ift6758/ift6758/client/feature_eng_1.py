@@ -2,6 +2,71 @@ import pandas as pd
 import numpy as np
 
 
+
+#Milestone 3 Function
+def get_engineered_df_by_game(original_df , bool_list = False, save_csv=False) -> pd.DataFrame:
+
+    """
+    1. Retrieve a dataframe from tidy_data.py (regular and playoff combined) with all play_by_play events from start year to end year (inclusive)
+    2. Append different features to the retrieved dataframe according to milestone 2 feature engineering 1 guidelines
+    3. return full dataframe with new features appended
+    4. option to save dataframe as a .csv file if save_csv boolean set to True
+
+    Returns whole dataframe with newly engineered features for start to end seasons inclusive.
+
+    Features and their details:
+    
+        x , y : x-coodinate and y_coordinate.
+        zone_code : O (offensive), D (defensive), N (neutral) -> helps determine which side home/away team is defending
+        event_owner_team_id : team responsible for event
+        
+        is_goal (engineered) -> check if event_type =='goal'
+        empty_net (engineered) -> not 100% previse -> determined if goalie_id is missing during play
+
+        x_mean_home (engineered) -> (utility field) -> checks the mean offensive position of home team. If mean is positive, home team is defending on left and attacking on right. Useful to determine home_defending_side later
+
+        home_defending_side (engineered) -> missing for 2016-2018 season. therefore engineered using "x_mean_home".
+        More details in "compute_home_defending_side" function
+
+        x_distance (engineered) -> (utility field) -> determines x_axis distance from net/goal (89,0).
+        Note that this is DIFFERENT TO DISTANCE_FROM_NET.
+        We use x_distance and y coordinate to calculate euclidean distance to net.
+        More details in "compute_row_x_distance" function. Needs to handle a lot of edge cases
+
+        distance_net (engineered) -> EUCLIDEAN DISTANCE FROM NET TO SHOT -> IMPORTANT AND REQUIRED FOR MODEL TRAINING -> calculated using (x_distance , y).
+
+        angle_deg (engineered) -> angle from net to shot. Need to consider 4 quadrants : 2 in front of goal and 2 behind goal.
+        Range for front shots : [0,90] degrees. Range for back shots : [180, 270] degrees
+        More details in "compute_row_shot_angle" function
+
+        angle_rad (engineered) -> angle_deg converted to radians
+
+    """
+    df = original_df.copy()
+
+    df = compute_is_goal(df)
+
+    df= compute_empty_net(df)
+
+    df = compute_home_defending_side(df)
+
+    df = compute_df_shot_distance(df)
+
+    df = compute_df_shot_angle(df)
+
+    #Save as csv
+    if(save_csv):
+        df.to_csv(f"./features.csv", index=False)
+
+    
+    #print(df.head(20))
+    #print(df.tail(20))
+    
+    return df
+
+
+
+
 def get_engineered_df_by_season(start_year : int, end_year :int =-1 , bool_list = False, save_csv=False) -> pd.DataFrame:
 
     """
@@ -72,69 +137,8 @@ def get_engineered_df_by_season(start_year : int, end_year :int =-1 , bool_list 
     
     return df
 
-#Milestone 3 Function
-def get_engineered_df_by_game(original_df , bool_list = False, save_csv=False) -> pd.DataFrame:
-
-    """
-    1. Retrieve a dataframe from tidy_data.py (regular and playoff combined) with all play_by_play events from start year to end year (inclusive)
-    2. Append different features to the retrieved dataframe according to milestone 2 feature engineering 1 guidelines
-    3. return full dataframe with new features appended
-    4. option to save dataframe as a .csv file if save_csv boolean set to True
-
-    Returns whole dataframe with newly engineered features for start to end seasons inclusive.
-
-    Features and their details:
-    
-        x , y : x-coodinate and y_coordinate.
-        zone_code : O (offensive), D (defensive), N (neutral) -> helps determine which side home/away team is defending
-        event_owner_team_id : team responsible for event
-        
-        is_goal (engineered) -> check if event_type =='goal'
-        empty_net (engineered) -> not 100% previse -> determined if goalie_id is missing during play
-
-        x_mean_home (engineered) -> (utility field) -> checks the mean offensive position of home team. If mean is positive, home team is defending on left and attacking on right. Useful to determine home_defending_side later
-
-        home_defending_side (engineered) -> missing for 2016-2018 season. therefore engineered using "x_mean_home".
-        More details in "compute_home_defending_side" function
-
-        x_distance (engineered) -> (utility field) -> determines x_axis distance from net/goal (89,0).
-        Note that this is DIFFERENT TO DISTANCE_FROM_NET.
-        We use x_distance and y coordinate to calculate euclidean distance to net.
-        More details in "compute_row_x_distance" function. Needs to handle a lot of edge cases
-
-        distance_net (engineered) -> EUCLIDEAN DISTANCE FROM NET TO SHOT -> IMPORTANT AND REQUIRED FOR MODEL TRAINING -> calculated using (x_distance , y).
-
-        angle_deg (engineered) -> angle from net to shot. Need to consider 4 quadrants : 2 in front of goal and 2 behind goal.
-        Range for front shots : [0,90] degrees. Range for back shots : [180, 270] degrees
-        More details in "compute_row_shot_angle" function
-
-        angle_rad (engineered) -> angle_deg converted to radians
-
-    """
-    df = original_df.copy()
-
-    df = compute_is_goal(df)
-
-    df= compute_empty_net(df)
-
-    df = compute_home_defending_side(df)
-
-    df = compute_df_shot_distance(df)
-
-    df = compute_df_shot_angle(df)
-
-    #Save as csv
-    if(save_csv):
-        df.to_csv(f"./features.csv", index=False)
-
-    
-    #print(df.head(20))
-    #print(df.tail(20))
-    
-    return df
 
 #set boolean 1 if goal, 0 otherwise
-
 def compute_is_goal(df : pd.DataFrame) -> pd.DataFrame:
     filter = (df['event_type']=='goal')
     df['is_goal'] = filter.astype(int)
