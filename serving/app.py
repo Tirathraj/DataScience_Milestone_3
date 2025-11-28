@@ -208,3 +208,10 @@ def predict():
     return jsonify({"predictions": y_pred_prob.tolist(), "model": MODEL_ID, "features": X.columns.tolist()}), 200
 
 
+#Tirath code Milestone 3
+#Added main to run flask locally inside a console without gunicorn
+if __name__=="__main__":
+    print(f"Starting flask...")
+    app.run(host="0.0.0.0", port = 8080, debug=True, use_reloader = False)
+    
+    #use reloading prevents flask windows bug and system exception
