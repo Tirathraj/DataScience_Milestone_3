@@ -26,6 +26,7 @@ class ServingClient:
         
         #Added for Milestone 3 (Tirath)
         self.predict_url = f"{self.base_url}//predict"
+        self.log_url = f"{self.base_url}//logs"
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
         """
@@ -61,8 +62,22 @@ class ServingClient:
 
     def logs(self) -> dict:
         """Get server logs"""
+        #raise NotImplementedError("TODO: implement this function")
 
-        raise NotImplementedError("TODO: implement this function")
+        try:
+            response = requests.get(self.log_url)
+
+        except Exception as e:
+            print(f"Log Error: {e}")
+            raise RuntimeError()
+
+        if(response.status_code !=200):
+            print(f"Error code {response.status_code}: {response.text}")
+            raise RuntimeError()
+
+        log_dict = response.json()
+        return log_dict
+        
 
     def download_registry_model(self, workspace: str, model: str, version: str) -> dict:
         """
