@@ -83,6 +83,18 @@ def create_app():
 
         app.logger.info("Starting service")
 
+
+        #### ADDITION PAR ISSAM #######
+        # Docker ne fonctionnait pas car wandb n'était pas connecté
+        wandb_key = os.environ.get("WANDB_API_KEY")
+        if wandb_key:
+            wandb.login(key=wandb_key)
+            app.logger.info("Logged in to Wandb")
+        else:
+            app.logger.warning("WANDB_API_KEY not found in environment")
+
+
+
         global MODEL, MODEL_ID
         artifact_id = "IFT6758-2025-A10/Logistic Regression/Distance:v1"
         try:
@@ -167,6 +179,14 @@ def download_registry_model():
             MODEL_ID = artifact_name
             app.logger.info(f"Loaded and changed model to {MODEL_ID}")
         else:
+
+            ##### ADDITION PAR ISSAM #######
+            # Checker si wandb est connecté
+            wandb_key = os.environ.get("WANDB_API_KEY")
+            if wandb_key:
+                wandb.login(key=wandb_key)
+
+
             api = wandb.Api()
             artifact = api.artifact(artifact_name, type="model")
             app.logger.info(f"Downloading model {artifact_name} from Wandb")
