@@ -50,7 +50,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 
 # TODO: add code, optionally a default model if you want 
-COPY serving/ ./serving/
+COPY serving/app.py ./serving/app.py
 COPY ift6758/ ./ift6758/
 RUN pip install -e ./ift6758
 
