@@ -8,7 +8,7 @@
 
 # https://docs.docker.com/engine/reference/builder/#from
 # You shouldn't need to change this
-FROM python:3.7
+FROM python:3.9
 
 # https://docs.docker.com/engine/reference/builder/#workdir
 # Create and cd into /code as your working directory
@@ -43,15 +43,21 @@ WORKDIR /code
 #       CMD <SHELL COMMAND>
 
 
+# TODO: install libs
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+
 
 # TODO: add code, optionally a default model if you want 
-
-
-# TODO: install libs
+COPY serving/app.py ./serving/app.py
+COPY ift6758/ ./ift6758/
+RUN pip install -e ./ift6758
 
 
 # TODO: expose ports (or do this in docker-compose)
-
+EXPOSE 8080
 
 # TODO: specify default command - this is not required because you can always specify the command
 # either with the docker run command or in the docker-compose file
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "serving.app:create_app()"]

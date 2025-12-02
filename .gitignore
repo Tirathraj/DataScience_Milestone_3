@@ -160,3 +160,4 @@ dmypy.json
 /ift6758_venv
 /IFT6758_Blog
 /wandb
+*.pdf
