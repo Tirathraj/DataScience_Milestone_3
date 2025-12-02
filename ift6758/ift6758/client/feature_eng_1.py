@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import ift6758.data.tidy_data as td
 
 
 

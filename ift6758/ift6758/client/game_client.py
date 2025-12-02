@@ -6,7 +6,7 @@ import os
 import requests
 import time
 
-from feature_eng_1 import get_engineered_df_by_game
+from ift6758.client.feature_eng_1 import get_engineered_df_by_game
 
 
 #Ported from Milestone 1 for milestone 3
@@ -236,6 +236,7 @@ def get_play_by_play_by_game(data : dict ) -> list[dict]:
         'period_number': play.get('periodDescriptor').get('number'),
         'period_type': play.get('periodDescriptor').get('periodType'),
         'time_in_period': play.get('timeInPeriod', np.nan),
+        'time_left' : play.get('timeRemaining', np.nan),
         'strength': details.get('strength', np.nan),
         'event_type': event_type,
         'shot_type': details.get('shotType', np.nan),

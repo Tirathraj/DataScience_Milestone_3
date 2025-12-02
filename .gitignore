@@ -6,6 +6,9 @@
 *.json
 *.csv
 
+# local path_variables
+path_variables.py
+
 # API keys and credentials
 *.env
 *.secret
