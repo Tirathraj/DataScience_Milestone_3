@@ -281,7 +281,7 @@ def compute_row_x_distance(row):
             
     #dist = np.sqrt ( x_dist ** 2 + y**2 )
 
-    row['x_dist'] = x_dist
+    # row['x_dist'] = x_dist
 
     #return dist
     return x_dist

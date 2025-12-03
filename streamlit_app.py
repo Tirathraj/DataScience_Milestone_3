@@ -15,55 +15,88 @@ def download_model():
         st.success("Model downloaded.")
     except Exception as e:
         st.error(f"Failed to download model: {str(e)}")
-
-def update_model():
-    download_model()
-    if st.session_state['model'] == "Distance":
+        return False
+    
+    model = st.session_state['model']
+    if model == "Distance":
         st.session_state['features'] = ['distance_net']
-    elif st.session_state['model'] == "Angle":
+    elif model == "Angle":
         st.session_state['features'] = ['angle_rad']
-    elif st.session_state['model'] == "Distance_Angle":
+    elif model == "Distance_Angle":
         st.session_state['features'] = ['distance_net','angle_rad']
     else:
         st.error("Model not available")
-        return
-    fetch_game()
+        return False
+    return True
 
-def seperate_preditcted_goals(predictions : list):
-    preds = pd.Series(predictions).astype(float)
-    goal_idx = preds[preds > mv.PREDICTION_THRESH].index
-    is_pred_goal = preds.index.isin(goal_idx)
-    is_home = st.session_state['game_df']["event_owner_team_name"] == st.session_state['game_df']["home_name"]
-    is_away = st.session_state['game_df']["event_owner_team_name"] == st.session_state['game_df']["away_name"]
-    home_goals = st.session_state['game_df'].loc[is_pred_goal & is_home]
-    away_goals = st.session_state['game_df'].loc[is_pred_goal & is_away]
+def seperate_preditcted_goals(predictions : pd.Series):
+    game_df = st.session_state['game_df']
+    preds = predictions.astype(float)
+    thresh = mv.PREDICTION_THRESH
+    mask = preds > thresh
+    home_mask = game_df["event_owner_team_name"] == game_df["home_name"]
+    away_mask = game_df["event_owner_team_name"] == game_df["away_name"]
+    home_goals = game_df[mask & home_mask]
+    away_goals = game_df[mask & away_mask]
     return home_goals, away_goals
 
-def predict_game():
-    predicted_goals = serving_client.predict(st.session_state['game_df'][st.session_state['features']])
-    st.session_state['game_df']['Model output'] = pd.Series(predicted_goals)
-    st.session_state['home_pred_goals'], st.session_state['away_pred_goals'] = seperate_preditcted_goals(predicted_goals)
+def predict_game(start_index : int = 0):
+    game_df = st.session_state['game_df']
+    features = st.session_state["features"]
+
+    to_predict = game_df.loc[start_index:, features]
+
+    if to_predict.empty:
+        return
+    
+    preds = pd.Series(serving_client.predict(to_predict), index=to_predict.index)
+    st.session_state["Model output"] = pd.concat([st.session_state['Model output'], preds], ignore_index=True)
+    st.session_state['home_pred_goals'], st.session_state['away_pred_goals'] = seperate_preditcted_goals(st.session_state['Model output'])
 
 def fetch_game():
+    print(f"Fetching game {st.session_state['game_id']}")
+    game_id = st.session_state["game_id"]
+    prev_id = st.session_state.get("previous_game_id")
     try:
-        st.session_state['game_df'] = GameClient.get_df_by_game(st.session_state['game_id'])
+        game_df = GameClient.get_df_by_game(game_id)
     except Exception as e:
         print("Failed to get game data " + str(e))
-        st.error('Failed to get game data. Make sure this is a valid game id')
+        st.warning('Failed to get game data. Make sure this is a valid game id. Returning to previous game')
         return
-    predict_game()
+    if game_df is None:
+        game_df = GameClient.get_df_by_game(prev_id)
+    
+    st.session_state['game_df'] = game_df
+    prev_len = st.session_state.get("prev_game_length", 0)
+    new_len = game_df.shape[0]
+
+    if game_id != prev_id:
+        print(f"Calculating predictions for new game")
+        predict_game(0)
+    elif game_df.iloc[0]["game_state"] == "LIVE" and new_len > prev_len:
+        print(f"Calculating predictions for rest of the live game")
+        predict_game(prev_len)
+    st.session_state['game_df']['Model output'] = st.session_state["Model output"]
+    st.session_state['previous_game_id'] =game_id
+    st.session_state['prev_game_length'] = new_len
+    return
+    
+    
 
 def initialize_data():
-    st.session_state["game_df"] = GameClient.get_df_by_game(2025020001)
-    st.session_state['game_id'] = 2025020001
+    print("Initializing streamlit state")
+    st.session_state['game_id'] = 2024020001
     st.session_state['workspace'] = "IFT6758-2025-A10/Logistic Regression"
     st.session_state['model'] = "Distance"
     st.session_state['features'] = ['distance_net']
     st.session_state['version'] = "v1"
+    st.session_state['previous_game_id'] = None
+    st.session_state['prev_game_length'] = 0 # Since initialization game is not live
+    st.session_state["Model output"] = pd.Series(dtype=float)
     download_model()
     fetch_game()
 
-initialize_data()
+if "game_df" not in st.session_state: initialize_data()
 
 # --------------------------------
 #       Page frame
@@ -75,33 +108,38 @@ with st.sidebar:
     st.session_state["workspace"] = st.selectbox(label="Workspace",options=mv.WORKSPACES, index=0)
     st.session_state["model"] = st.selectbox(label="Model", options=mv.MODELS, index=0)
     st.session_state["version"] = st.selectbox(label="Version", options=mv.VERSIONS, index=0)
-    st.button("Get model", type="secondary", on_click=update_model)
+    st.button("Get model", type="secondary", on_click=lambda: (download_model() and fetch_game()))
 
 with st.container():
     st.session_state["game_id"] = st.text_input("Game ID", st.session_state["game_id"])
     st.button("Ping game", type="secondary", on_click= fetch_game)
 
-st.subheader(f"Game {st.session_state['game_id']}: {st.session_state['game_df'].iloc[0]['home_name']} vs {st.session_state['game_df'].iloc[0]['away_name']}")
+game_df = st.session_state["game_df"]
+home = game_df.iloc[0]["home_name"]
+away = game_df.iloc[0]["away_name"]
+
+st.subheader(f"Game {st.session_state['game_id']}: {home} vs {away}")
+
 with st.container():
-    if st.session_state['game_df'].iloc[0]['game_state'] == 'LIVE':
-        f"Period {st.session_state['game_df'].iloc[-1]['period_number']} - {st.session_state['game_df'].iloc[-1]['time_left']} left"
+    if game_df.iloc[0]['game_state'] == 'LIVE':
+        f"Period {game_df.iloc[-1]['period_number']} - {game_df.iloc[-1]['time_left']} left"
     left, right = st.columns(2)
 
     with left.container():
         st.metric(
-            label=f"{st.session_state['game_df'].iloc[0]['home_name']} xG (actual)",
-            value=f"{st.session_state['home_pred_goals'].shape[0]} ({st.session_state['game_df'].iloc[-1]['home_score']})",
-            delta=st.session_state['home_pred_goals'].shape[0] - st.session_state['game_df'].iloc[-1]['home_score'],
+            label=f"{home} xG (actual)",
+            value=f"{st.session_state['home_pred_goals'].shape[0]} ({game_df.iloc[-1]['home_score']})",
+            delta=st.session_state['home_pred_goals'].shape[0] - game_df.iloc[-1]['home_score'],
             delta_color='off'
         )
     with right.container():
         st.metric(
-            label=f"{st.session_state['game_df'].iloc[0]['away_name']} xG (actual)",
-            value=f"{st.session_state['away_pred_goals'].shape[0]} ({st.session_state['game_df'].iloc[-1]['away_score']})",
-            delta=st.session_state['away_pred_goals'].shape[0] - st.session_state['game_df'].iloc[-1]['away_score'],
+            label=f"{away} xG (actual)",
+            value=f"{st.session_state['away_pred_goals'].shape[0]} ({game_df.iloc[-1]['away_score']})",
+            delta=st.session_state['away_pred_goals'].shape[0] - game_df.iloc[-1]['away_score'],
             delta_color='off'
         )
 
 with st.container():
     st.subheader("Data used for predictions (and predictions)")
-    st.table(st.session_state['game_df'][['home_name', 'away_name', 'period_number', 'time_left', 'home_score', 'away_score', 'Model output']])
+    st.table(game_df[['event_owner_team_name', 'home_name', 'away_name', 'period_number', 'time_left', 'distance_net','angle_rad', 'event_type', 'Model output']])
