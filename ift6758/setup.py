@@ -5,6 +5,6 @@ setup(
     packages=find_packages(),
     version='0.1.0',
     description='Sample project repo for IFT6758-2021',
-    author='[FILL IN TEAM MEMBERS]',
+    author='Issam Saadie, Tirathraj Ramburn, Noé Poulain, Simon Pino-Buisson',
     license='',
 )

@@ -3,15 +3,14 @@ import requests
 import pandas as pd
 import logging
 
-
 logger = logging.getLogger(__name__)
-
 
 class ServingClient:
     
     #def __init__(self, ip: str = "0.0.0.0", port: int = 5000, features=None):
     
     #Modified default port number to match flask port
+    
     
     def __init__(self, ip: str = "127.0.0.1", port: int = 8080, features=None):
         
@@ -25,9 +24,13 @@ class ServingClient:
         # any other potential initialization
         
         #Added for Milestone 3 (Tirath)
-        self.predict_url = f"{self.base_url}//predict"
-        self.log_url = f"{self.base_url}//logs"
-        self.registry_url = f"{self.base_url}//download_registry_model"
+        self.predict_url = f"{self.base_url}/predict"
+        self.log_url = f"{self.base_url}/logs"
+        self.registry_url = f"{self.base_url}/download_registry_model"
+
+        #  self.predict_url = f"{self.base_url}//predict"
+        # self.log_url = f"{self.base_url}//logs"
+        # self.registry_url = f"{self.base_url}//download_registry_model"
 
         print(f"Serving Client Initialized")
 
