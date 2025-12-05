@@ -6,6 +6,9 @@ import model_variables as mv
 
 serving_client = ServingClient()
 
+def get_game_year(game_id : int):
+    return int(str(game_id)[:4])
+
 def download_model():
     try:
         serving_client.download_registry_model(
@@ -143,3 +146,18 @@ with st.container():
 with st.container():
     st.subheader("Data used for predictions (and predictions)")
     st.table(game_df[['event_owner_team_name', 'home_name', 'away_name', 'period_number', 'time_left', 'distance_net','angle_rad', 'event_type', 'Model output']])
+
+with st.container():
+    st.write("This is the bonus part. We use the advanced visualization part from Milestone 1 where we compared the average shot per hour of a given team to the rest of the league. \n \
+             Here, we plot the average shot per hour (per location) of each team compared to the rest of the league for the season where the match occured. This gives insight on how the different teams play their offense and how their playstyles match eachother.")
+    fig_home = GameClient.get_avg_shot_per_hour_fig(get_game_year(st.session_state["game_id"]), game_df.iloc[0]["home_name"])
+    fig_away = GameClient.get_avg_shot_per_hour_fig(get_game_year(st.session_state["game_id"]), game_df.iloc[0]["away_name"])
+    left, right = st.columns(2)
+
+    st.subheader(f"Shot per hour per location of each team this year")
+    with left.container():
+        st.write(f"{game_df.iloc[0]["home_name"]}")
+        st.pyplot(fig_home)
+    with right.container():
+        st.write(f"{game_df.iloc[0]["away_name"]}")
+        st.pyplot(fig_away)

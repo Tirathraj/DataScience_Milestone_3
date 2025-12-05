@@ -7,6 +7,7 @@ import requests
 import time
 
 from ift6758.client.feature_eng_1 import get_engineered_df_by_game
+from ift6758.client.visualisation_avance import visualisation_avancee
 
 
 #Ported from Milestone 1 for milestone 3
@@ -387,4 +388,8 @@ def get_root_data_by_game( data : dict) -> dict :
         
 
     return game_info , venue_info, home_team, away_team
+
+def get_avg_shot_per_hour_fig(year : int, team_name : str):
+    fig =  visualisation_avancee(start_season=year, team= team_name)
+    return fig
 
