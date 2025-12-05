@@ -60,4 +60,4 @@ EXPOSE 8080
 
 # TODO: specify default command - this is not required because you can always specify the command
 # either with the docker run command or in the docker-compose file
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "serving.app:create_app()"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "serving.app:app"]

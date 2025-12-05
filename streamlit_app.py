@@ -3,8 +3,15 @@ import pandas as pd
 from ift6758.client.serving_client import ServingClient
 import ift6758.client.game_client as GameClient
 import model_variables as mv
+import os
 
-serving_client = ServingClient()
+###### IMPORTANT #######
+# Modification par Issam pour que le client pointe vers le service flask
+
+serving_ip = os.getenv("SERVING_HOST", "127.0.0.1")
+serving_client = ServingClient(ip=serving_ip)
+
+# serving_client = ServingClient()
 
 def get_game_year(game_id : int):
     return int(str(game_id)[:4])

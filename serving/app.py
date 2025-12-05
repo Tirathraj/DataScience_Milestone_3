@@ -233,5 +233,6 @@ def predict():
 if __name__=="__main__":
     print(f"Starting flask...")
     app.run(host="0.0.0.0", port = 8080, debug=True, use_reloader = False)
+
     
     #use reloading prevents flask windows bug and system exception

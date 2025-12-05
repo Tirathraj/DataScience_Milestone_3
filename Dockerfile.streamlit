@@ -49,8 +49,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 
 # TODO: add code, optionally a default model if you want 
+COPY streamlit_app.py ./streamlit_app.py
 COPY serving/ ./serving/
 COPY ift6758/ ./ift6758/
+COPY model_variables.py ./model_variables.py
+COPY figures/ ./figures/
 RUN pip install -e ./ift6758
 
 
@@ -65,4 +68,4 @@ EXPOSE 8501
 
 ##### IMPORTANT #####
 # Configurer le server port et server address pour streamlit 
-CMD ["streamlit", "run", "STREAMLIT APP FILE", "--server.port=", "--server.address="]
+CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
