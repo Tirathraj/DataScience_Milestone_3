@@ -13,6 +13,13 @@ from ift6758.client.visualisation_avance import visualisation_avancee
 #Ported from Milestone 1 for milestone 3
 
 def get_df_by_game(game_id = 2016020001):
+    """
+    Used for milestone 3.
+    Retrieve a game by id from NHL API
+    Do feature engineering to get required features
+    
+    Return the engineered df
+    """
 
     file = fetch_data_by_api(game_id)
 

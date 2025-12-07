@@ -97,7 +97,22 @@ def convert_game_time_seconds(game_df: pd.DataFrame) -> pd.Series:
         time.append(total_time_elapsed)
 
     return pd.Series(time, index = game_df.index)
+    
+def highlight_xg_cell(val):
+    
+    """
+    Highlight xG cells based on value:
+    0.10+ -> green (High chance)
+    0.05+ -> yellow (Medium chance)
+    """
+    x = float(val)
 
+    if x > 0.10:
+        return "background-color: lightgreen"
+    elif x > 0.05:
+        return "background-color: yellow"
+    else:
+        return ""
 
 #Simon Main + Bonus Part
 
@@ -259,7 +274,23 @@ with st.container():
 
 with st.container():
     st.subheader("Data used for predictions (and predictions)")
-    st.table(game_df[['event_owner_team_name', 'home_name', 'away_name', 'period_number', 'time_left', 'distance_net','angle_rad', 'event_type', 'Model output']])
+
+    #Tirath Part
+    #Add columns for nicer display
+    game_df['event_owner'] = game_df['event_owner_team_name']
+    game_df['period'] = game_df['period_number']
+    game_df["distance"] = game_df["distance_net"]
+    game_df["Predicted xG"] = game_df["Model output"]
+    
+    cols = ['event_owner','period', 'time_left','distance', 'angle_rad','event_type', 'Predicted xG']
+    
+    styled_df = game_df[cols].style.applymap(highlight_xg_cell, subset=['Predicted xG'])
+
+    st.dataframe(styled_df)
+    #End of tirath
+    
+    #Simon part
+    #st.table(game_df[['event_owner_team_name', 'home_name', 'away_name', 'period_number', 'time_left', 'distance_net','angle_rad', 'event_type', 'Model output']])
 
 with st.container():
     #Tirath
