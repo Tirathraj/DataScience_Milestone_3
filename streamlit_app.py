@@ -5,6 +5,8 @@ import ift6758.client.game_client as GameClient
 import model_variables as mv
 import os
 
+import matplotlib.pyplot as plt
+
 ###### IMPORTANT #######
 # Modification par Issam pour que le client pointe vers le service flask
 
@@ -12,6 +14,92 @@ serving_ip = os.getenv("SERVING_HOST", "127.0.0.1")
 serving_client = ServingClient(ip=serving_ip)
 
 # serving_client = ServingClient()
+
+#Tirath bonus part
+def cumulative_xg(game_df: pd.DataFrame):
+    """
+    Calculates cumulative xG over time for both teams.
+
+    Returns:
+        home_df: df with event_index, time, cumulative_xg for home
+        away_df: df with event_index, time, cumulative_xg for away
+    """
+
+    # Determines time index
+    game_df = game_df.copy()
+    game_df["idx"] = range(len(game_df))
+
+    # Gets total elapsed time in seconds
+    game_df["time_sec"] = convert_game_time_seconds(game_df)
+
+    # team names
+    home = game_df.iloc[0]["home_name"]
+    away = game_df.iloc[0]["away_name"]
+
+    home_mask = game_df["event_owner_team_name"] == home
+    away_mask = game_df["event_owner_team_name"] == away
+
+    # Get row data
+    home_df = game_df.loc[home_mask, ["time_sec", "Model output"]].copy()
+    away_df = game_df.loc[away_mask, ["time_sec", "Model output"]].copy()
+
+    # cumulative xG for both teams
+    home_df["cumulative_xg"] = home_df["Model output"].cumsum()
+    away_df["cumulative_xg"] = away_df["Model output"].cumsum()
+
+    return home_df, away_df
+
+def plot_cumulative_xg(home_df: pd.DataFrame, away_df: pd.DataFrame, home_name: str, away_name: str):
+    """
+    Plots cumulative xG over time for both teams.
+    """
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    # Plot teams xG
+    #Convert seconds into minutes by dividing by 60 for display
+    
+    ax.plot(home_df["time_sec"]/60, home_df["cumulative_xg"], label=f"Home: {home_name} xG",color="red")
+    ax.plot(away_df["time_sec"]/60, away_df["cumulative_xg"],label=f"Away: {away_name} xG",color="blue")
+
+    ax.set_xlabel("Elapsed Time (minutes)")
+    ax.set_ylabel("Cumulative xG")
+    ax.set_title("Cumulative xG over Time")
+    ax.legend()
+
+    return fig
+
+def convert_game_time_seconds(game_df: pd.DataFrame) -> pd.Series:
+    """
+    Converts (period_number, time_left MM:SS) into seconds elapsed for game
+
+    Example:
+        Period 1 time_left = 20 -> 0 seconds
+        Period 2 time_left = 20 -> 7200 seconds
+    """
+    df = game_df.copy()
+
+    time = []
+    for _, row in df.iterrows():
+                
+        PERIOD_LENGTH = 20 * 60  # 1200 seconds
+        
+        period = int( row["period_number"] )
+        
+        mins, secs = map(int, row["time_left"].split(":") )
+        seconds_left = (mins * 60) + secs
+        
+        # Time elapsed inside the current period
+        period_elapsed = PERIOD_LENGTH - seconds_left
+
+        # Total time since game start
+        total_time_elapsed = ( (period - 1) * PERIOD_LENGTH ) + period_elapsed
+        
+        time.append(total_time_elapsed)
+
+    return pd.Series(time, index = game_df.index)
+
+
+#Simon Main + Bonus Part
 
 def get_game_year(game_id : int):
     return int(str(game_id)[:4])
@@ -128,6 +216,23 @@ game_df = st.session_state["game_df"]
 home = game_df.iloc[0]["home_name"]
 away = game_df.iloc[0]["away_name"]
 
+# Cumulative xG (Tirath)
+st.subheader("Cumulative xG Progression Over Time")
+
+# Calculate cumulative xG for both teams
+home_xg_df, away_xg_df = cumulative_xg(game_df)
+
+# Plot
+fig = plot_cumulative_xg(home_xg_df, away_xg_df, home, away) #used simon's home variable name
+st.pyplot(fig)
+
+#Cumulative scores are the last row values for both teams
+cumulative_home_xg = home_xg_df["cumulative_xg"].iloc[-1] #series indexing
+cumulative_away_xg = away_xg_df["cumulative_xg"].iloc[-1]
+
+# End of cumulative xG 
+
+
 st.subheader(f"Game {st.session_state['game_id']}: {home} vs {away}")
 
 with st.container():
@@ -138,14 +243,16 @@ with st.container():
     with left.container():
         st.metric(
             label=f"{home} xG (actual)",
-            value=f"{st.session_state['home_pred_goals'].shape[0]} ({game_df.iloc[-1]['home_score']})",
+            #value=f"{st.session_state['home_pred_goals'].shape[0]} ({game_df.iloc[-1]['home_score']})",
+            value=f"{cumulative_home_xg:.2f} ({game_df.iloc[-1]['home_score']})",
             delta=st.session_state['home_pred_goals'].shape[0] - game_df.iloc[-1]['home_score'],
             delta_color='off'
         )
     with right.container():
         st.metric(
             label=f"{away} xG (actual)",
-            value=f"{st.session_state['away_pred_goals'].shape[0]} ({game_df.iloc[-1]['away_score']})",
+            #value=f"{st.session_state['away_pred_goals'].shape[0]} ({game_df.iloc[-1]['away_score']})",
+            value=f"{cumulative_away_xg:.2f} ({game_df.iloc[-1]['away_score']})",
             delta=st.session_state['away_pred_goals'].shape[0] - game_df.iloc[-1]['away_score'],
             delta_color='off'
         )
@@ -155,8 +262,11 @@ with st.container():
     st.table(game_df[['event_owner_team_name', 'home_name', 'away_name', 'period_number', 'time_left', 'distance_net','angle_rad', 'event_type', 'Model output']])
 
 with st.container():
+    #Tirath
+    st.write(f"Bonus part 1: We calculate cumulative xG for both teams over all shot events and plot a graph of cumulative xG over time. Huge jumps in such graps tend to highlight big chances such as goals, or a sustained time period of attacking play.")
+    #Simon
     st.write("This is the bonus part. We use the advanced visualization part from Milestone 1 where we compared the average shot per hour of a given team to the rest of the league. \n \
-             Here, we plot the average shot per hour (per location) of each team compared to the rest of the league for the season where the match occured. This gives insight on how the different teams play their offense and how their playstyles match eachother.")
+             Here, we plot the average shot per hour (per location) of each team compared to the rest of the league for the season where the match occured. This gives insight on how the different teams play their offense and how their playstyles match eachother.")    
     fig_home = GameClient.get_avg_shot_per_hour_fig(get_game_year(st.session_state["game_id"]), game_df.iloc[0]["home_name"])
     fig_away = GameClient.get_avg_shot_per_hour_fig(get_game_year(st.session_state["game_id"]), game_df.iloc[0]["away_name"])
     left, right = st.columns(2)
