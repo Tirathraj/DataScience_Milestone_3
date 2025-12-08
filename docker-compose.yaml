@@ -13,6 +13,9 @@ services:
     image: ift6758/serving:latest
     ports:
       - 8080:8080
+    #env file pour wandb api key
+    env_file:
+      - .env
     environment:
       WANDB_API_KEY: ${WANDB_API_KEY}
 ###### Uncomment below when you're ready to add the final notebook container to your docker compose
