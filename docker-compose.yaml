@@ -3,7 +3,7 @@
 
 #### IMPORTANT ####
 # command to run BEFORE docker-compose up:
-# $env:WANDB_API_KEY="your_wandb_api_key_here"  (in PowerShell)
+# $env:WANDB_API_KEY="your_wandb_api_key_here"  (in PowerShell) or simply have a .env file in the same directory as this docker-compose.yaml file
 
 services:
   serving:
