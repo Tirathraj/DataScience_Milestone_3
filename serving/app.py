@@ -23,58 +23,28 @@ import ift6758
 
 
 LOG_FILE = os.environ.get("FLASK_LOG", "flask.log")
-
 MODEL = None
 MODEL_ID = None
 MODEL_DIR = Path("models")
 MODEL_DIR.mkdir(exist_ok=True)
 
-
-# app = Flask(__name__)
-#
-#
-# @app.before_first_request
-# def before_first_request():
-#     """
-#     Hook to handle any initialization before the first request (e.g. load model,
-#     setup logging handler, etc.)
-#     """
-#     logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-#
-#     # also log to console; source: https://stackoverflow.com/questions/14058453/making-python-loggers-output-all-messages-to-stdout-in-addition-to-log-file
-#     handler = logging.StreamHandler()
-#     handler.setLevel(logging.INFO)
-#     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-#     handler.setFormatter(formatter)
-#     logging.getLogger().addHandler(handler)
-#
-#     app.logger.info("Starting service")
-#
-#     global MODEL, CURRENT_MODEL
-#     artifact_id = "IFT6758-2025-A10/Logistic Regression/Distance:v1"
-#     try:
-#         api = wandb.Api()
-#         artifact = api.artifact(artifact_id, type="model")
-#         artifact_dir = artifact.download()
-#         model_path = Path(artifact_dir) / "log_reg_Distance.pkl"
-#         MODEL = joblib.load(model_path)
-#         CURRENT_MODEL = artifact_id
-#
-#         app.logger.info(f"Loaded {CURRENT_MODEL} model from {model_path}")
-#     except Exception as e:
-#         app.logger.exception(f"Error while trying to download default model {artifact_id}: {e}")
-#         MODEL = None
-
 def create_app():
+    """
+    Source: # https://www.reddit.com/r/flask/comments/11sx1sx/before_first_request_deprecated/
+    Initialise l'application Flask avant la première request. Nous avons changé la logique qui utilisait @before_first_request car elle est depreciated depuis flask 2.3
+        - Initialise le fichier les logs pour output dans le fichier flask.log et dans la console
+        - Connecte à WandB en utilisant la clé API
+        - Charge le modèle par défault depuis le cache si disponible ou télécharge le modèle graçe à l'API wandb
+
+    Returns:
+        Flask: Application Flask initialisée avec le modèle chargé.
+    """
     app = Flask(__name__)
     with app.app_context():
-        """
-        Hook to handle any initialization before the first request (e.g. load model,
-        setup logging handler, etc.)
-        """
+        # Initialisation des logs avec le fichier flask.log
         logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-        # also log to console; source: https://stackoverflow.com/questions/14058453/making-python-loggers-output-all-messages-to-stdout-in-addition-to-log-file
+        # Ajout des Log dans la console; source: https://stackoverflow.com/questions/14058453/making-python-loggers-output-all-messages-to-stdout-in-addition-to-log-file
         handler = logging.StreamHandler()
         handler.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -82,7 +52,6 @@ def create_app():
         logging.getLogger().addHandler(handler)
 
         app.logger.info("Starting service")
-
 
         #### ADDITION PAR ISSAM #######
         # Docker ne fonctionnait pas car wandb n'était pas connecté
@@ -93,16 +62,16 @@ def create_app():
         else:
             app.logger.warning("WANDB_API_KEY not found in environment")
 
-
-
         global MODEL, MODEL_ID
         artifact_id = "IFT6758-2025-A10/Logistic Regression/Distance:v1"
         try:
+            # Charge le model en utilisant l'artéfact wandb, vérifie que le modèle n'est pas déja dans le cache.
             cache_path = MODEL_DIR / "Distance_v1.pkl"
             if cache_path.exists():
                 MODEL = joblib.load(cache_path)
                 MODEL_ID = artifact_id
                 app.logger.info(f"Loaded default model from cache: {cache_path}")
+            #Si le modèle n'est pas dans le cache, on le télécharge en utilisant l'API wandb
             else:
                 api = wandb.Api()
                 artifact = api.artifact(artifact_id, type="model")
@@ -127,8 +96,8 @@ app = create_app()
 @app.route("/logs", methods=["GET"])
 def logs():
     """Reads data from the log file and returns them as the response"""
-
     try:
+        # Lit le fichier logs ligne par ligne et enlève les caractères invisibles. Sauvegarde dans un dictionnaire afin de convertir en JSON
         with open(LOG_FILE, "r") as f:
             lines = [line.strip() for line in f]
             response = {"logs": lines}
@@ -173,11 +142,13 @@ def download_registry_model():
     old_model, old_id = MODEL, MODEL_ID
 
     try:
+        # Verifie si le modèle est cached
         if model_path.exists():
             app.logger.info(f"Loading model from {model_path} ...")
             MODEL = joblib.load(model_path)
             MODEL_ID = artifact_name
             app.logger.info(f"Loaded and changed model to {MODEL_ID}")
+        # Sinon télécharge le modèle avec l'API wandb
         else:
 
             ##### ADDITION PAR ISSAM #######
@@ -200,6 +171,7 @@ def download_registry_model():
         return jsonify({"model": MODEL_ID}), 200
 
     except Exception as e:
+        # Si un problème pour charger le nouveau modèle, on conserve le modèle précedent
         MODEL, MODEL_ID = old_model, old_id
         app.logger.exception(f"Failed to download/load model: {e}")
         app.logger.info(f"Keeping model currently in use: {MODEL_ID}")
@@ -211,7 +183,10 @@ def predict():
     """
     Handles POST requests made to http://IP_ADDRESS:PORT/predict
 
-    Returns predictions
+    Returns:
+        - predictions
+        - model utilisé
+        - features utilisées
     """
     # Get POST json data
     json_data = request.get_json()
@@ -222,8 +197,9 @@ def predict():
         app.logger.error(f"Called predict with model: {MODEL}")
         return jsonify({"error": f"Called predict with model: {MODEL}"}), 500
 
+
     X = pd.DataFrame(json_data)
-    y_pred_prob = MODEL.predict_proba(X)[:,1]
+    y_pred_prob = MODEL.predict_proba(X)[:,1] # [proba no goal (0), proba goal (1)] -> on garde seulement la proba de goal
     app.logger.info("Prediction done")
     return jsonify({"predictions": y_pred_prob.tolist(), "model": MODEL_ID, "features": X.columns.tolist()}), 200
 
