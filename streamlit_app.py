@@ -308,7 +308,9 @@ with st.container():
             delta_color='off'
         )
     
-    st.write("This is our bonus contribution. We plotted the goals (predicted and actual) as a function of time. This helps to get an idea of the performance of each team and to see how many \"unlikely\" goals were made. Game 2025020425 is a good example of a game where the Capitals scored many more goals than expected.")
+    st.write("This is our bonus contribution. We plotted the goals (predicted and actual) as a function of time simply by getting the time stamps of each true goal and plotting the cumulative expected goal with their time stamps. \
+             This helps to get an idea of the performance of each team and to see how many \"unlikely\" goals were made. \
+             Game 2025020425 is a good example of a game where the Capitals scored many more goals than expected.")
     # Plot
     fig = plot_cumulative_xg(home_xg_df, away_xg_df, home_actual_data, away_actual_data, home_name, away_name)
     st.pyplot(fig)
