@@ -206,6 +206,8 @@ def fetch_game():
     print(f"Fetching game {st.session_state['game_id']}")
     game_id = st.session_state["game_id"]
     prev_id = st.session_state.get("previous_game_id")
+    model = st.session_state['model']
+    prev_model = st.session_state['prev_model']
     try:
         game_df = GameClient.get_df_by_game(game_id)
     except Exception as e:
@@ -214,12 +216,12 @@ def fetch_game():
         return
     if game_df is None:
         game_df = GameClient.get_df_by_game(prev_id)
-    
+    st.session_state["Model output"] = pd.Series(dtype=float)
     st.session_state['game_df'] = game_df
     prev_len = st.session_state.get("prev_game_length", 0)
     new_len = game_df.shape[0]
 
-    if game_id != prev_id:
+    if game_id != prev_id or model != prev_model:
         print(f"Calculating predictions for new game")
         predict_game(0)
     elif game_df.iloc[0]["game_state"] == "LIVE" and new_len > prev_len:
@@ -228,6 +230,7 @@ def fetch_game():
     st.session_state['game_df']['Model output'] = st.session_state["Model output"]
     st.session_state['previous_game_id'] =game_id
     st.session_state['prev_game_length'] = new_len
+    st.session_state['prev_model'] = model
     return
     
     
@@ -241,6 +244,7 @@ def initialize_data():
     st.session_state['version'] = "v1"
     st.session_state['previous_game_id'] = None
     st.session_state['prev_game_length'] = 0 # Since initialization game is not live
+    st.session_state['prev_model'] = None
     st.session_state["Model output"] = pd.Series(dtype=float)
     download_model()
     fetch_game()
